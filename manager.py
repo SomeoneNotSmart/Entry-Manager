@@ -1,9 +1,12 @@
 import os
+import tkinter as tk
+from tkinter import messagebox
 from datetime import datetime
 from cryptography.fernet import Fernet
 
-SQL_FILE_PATH = "path-to-your-sql"
-KEY_FILE_PATH = "path/key.key"
+# Constants for file paths
+SQL_FILE_PATH = "/path/to/entries.sql"
+KEY_FILE_PATH = "/path/key.key"
 
 def generate_key():
     """Generate a new encryption key and save it to a file."""
@@ -39,58 +42,88 @@ def save_to_encrypted_sql_file(entries, key):
             f.write(encrypted_entry + b'\n')
 
 def read_encrypted_sql_file(key):
-    """Read the encrypted SQL file and display entries in a readable format."""
+    """Read the encrypted SQL file and return the decrypted entries."""
     if not os.path.exists(SQL_FILE_PATH):
-        print(f"File '{SQL_FILE_PATH}' not found.")
-        return
+        messagebox.showwarning("Warning", f"File '{SQL_FILE_PATH}' not found.")
+        return []
 
     with open(SQL_FILE_PATH, 'rb') as f:
         encrypted_lines = f.readlines()
 
-    print("\nReadable Entries:")
+    readable_entries = []
     for encrypted_line in encrypted_lines:
-        # Decrypt and display each line
+        # Decrypt each line and extract entry and timestamp
         try:
             decrypted_line = decrypt_data(encrypted_line.strip(), key)
             if decrypted_line.startswith("INSERT INTO"):
                 values = decrypted_line.split("VALUES")[1].strip().replace("(", "").replace(");", "").replace("'", "").split(",")
                 entry = values[0].strip()
                 timestamp = values[1].strip()
-                print(f" - {entry} (Recorded at: {timestamp})")
+                readable_entries.append(f" - {entry} (Recorded at: {timestamp})")
         except Exception as e:
-            print(f"Error decrypting line: {e}")
+            readable_entries.append(f"Error decrypting line: {e}")
+    return readable_entries
+
+def add_entry_window():
+    """Open a new window to add an entry."""
+    def save_entry():
+        # Get the entry and save to the file
+        entry_text = entry_input.get("1.0", "end-1c")
+        if entry_text.strip():
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            entries.append((entry_text, timestamp))
+            save_to_encrypted_sql_file(entries, key)
+            messagebox.showinfo("Success", "Entry added successfully!")
+            add_window.destroy()
+        else:
+            messagebox.showwarning("Warning", "Entry cannot be empty!")
+
+    # Create a new window for adding an entry
+    add_window = tk.Toplevel()
+    add_window.title("Add New Entry")
+    add_window.geometry("400x200")
+
+    tk.Label(add_window, text="Enter your entry:").pack(pady=5)
+    entry_input = tk.Text(add_window, height=5, width=40)
+    entry_input.pack(pady=5)
+
+    tk.Button(add_window, text="Save Entry", command=save_entry).pack(pady=5)
+
+def view_entries_window():
+    """Open a new window to view all entries."""
+    readable_entries = read_encrypted_sql_file(key)
+
+    # Create a new window to display entries
+    view_window = tk.Toplevel()
+    view_window.title("View Entries")
+    view_window.geometry("500x400")
+
+    text_area = tk.Text(view_window, wrap="word")
+    text_area.pack(expand=True, fill="both")
+
+    # Display each entry in the text area
+    for entry in readable_entries:
+        text_area.insert("end", entry + "\n")
+
+    text_area.config(state="disabled")
 
 def main():
-    # Load or generate the encryption key
+    global key, entries
     key = load_key()
+    entries = []
 
-    print("Choose an option:")
-    print("1. Add new entries")
-    print("2. Read and display SQL entries")
+    # Main application window
+    root = tk.Tk()
+    root.title("Encrypted SQL Entry Manager")
+    root.geometry("300x200")
 
-    choice = input("> ")
-    if choice == '1':
-        entries = []
-        print("Enter your entries below (type 'quit' to finish):")
+    tk.Label(root, text="SQL Entry Manager", font=("Helvetica", 16)).pack(pady=10)
 
-        while True:
-            user_input = input("> ")
-            if user_input.lower() in ['quit', 'exit']:
-                break
+    tk.Button(root, text="Add Entry", width=20, command=add_entry_window).pack(pady=5)
+    tk.Button(root, text="View Entries", width=20, command=view_entries_window).pack(pady=5)
+    tk.Button(root, text="Exit", width=20, command=root.quit).pack(pady=5)
 
-            # Record the current date and time for each entry
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            entries.append((user_input, timestamp))
-
-        save_to_encrypted_sql_file(entries, key)
-        print(f"Entries saved and encrypted to '{SQL_FILE_PATH}'.")
-
-    elif choice == '2':
-        read_encrypted_sql_file(key)
-    else:
-        print("Invalid option. Please choose either '1' or '2'.")
-      
-    input("\nPress Enter to exit...")
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
