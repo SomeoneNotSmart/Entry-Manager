@@ -151,7 +151,7 @@ def main():
     load_existing_entries()
 
     root = tk.Tk()
-    root.title("Encrypted SQL Entry Manager")
+    root.title("Entry Manager")
     root.geometry("300x250")
 
     tk.Label(root, text="SQL Entry Manager", font=("Helvetica", 16)).pack(pady=10)
