@@ -18,7 +18,7 @@ A simple Python application that allows users to create, view, and delete encryp
 1. Clone the repository to your local machine:
 
     ```bash
-    git clone https://github.com/username/entry-manager.git
+    https://github.com/your-username/Entry-Manager.git
     cd encrypted-sql-entry-manager
     ```
 
